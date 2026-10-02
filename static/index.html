@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WellBuddy - Health Information Assistant</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 660px; margin: 32px auto; padding: 0 16px; color: #1f2937; }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .banner { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 10px 12px; border-radius: 8px; font-size: .9rem; margin: 12px 0 16px; }
+  .row { display: flex; gap: 8px; }
+  input { flex: 1; padding: 10px; font-size: 1rem; border: 1px solid #d1d5db; border-radius: 8px; }
+  button { padding: 10px 16px; font-size: 1rem; border: 0; border-radius: 8px; background: #0f766e; color: #fff; cursor: pointer; }
+  .chips button { background: #ecfdf5; color: #065f46; font-size: .85rem; padding: 6px 10px; margin: 8px 6px 0 0; }
+  #out { margin-top: 20px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; display: none; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; margin-bottom: 8px; }
+  .self_care { background: #dcfce7; color: #166534; }
+  .see_a_doctor { background: #fef9c3; color: #854d0e; }
+  .emergency { background: #fee2e2; color: #991b1b; }
+  .meta { color: #6b7280; font-size: .85rem; margin-top: 10px; }
+  pre { background: #f3f4f6; padding: 10px; border-radius: 8px; overflow-x: auto; font-size: .8rem; }
+</style>
+</head>
+<body>
+  <h1>WellBuddy</h1>
+  <div>General health information assistant (learning project)</div>
+  <div class="banner">Not medical advice. In an emergency call <b>112</b> or go to the nearest hospital.</div>
+  <div class="row">
+    <input id="q" placeholder="e.g. How do I treat a minor burn?" onkeydown="if(event.key==='Enter')ask()">
+    <button onclick="ask()">Ask</button>
+  </div>
+  <div class="chips">
+    <button onclick="pick('How many hours of sleep do adults need?')">Sleep</button>
+    <button onclick="pick('What should I do for a nosebleed?')">First aid</button>
+    <button onclick="pick('My fever has lasted 5 days. What should I do?')">Fever</button>
+    <button onclick="pick('What dose of paracetamol should I take?')">Medicine dose</button>
+  </div>
+  <div id="out">
+    <span class="badge" id="badge"></span>
+    <div id="answer"></div>
+    <div class="meta" id="meta"></div>
+    <details><summary>Raw JSON</summary><pre id="json"></pre></details>
+  </div>
+<script>
+  function pick(t) { document.getElementById('q').value = t; ask(); }
+  async function ask() {
+    const question = document.getElementById('q').value.trim();
+    if (question.length < 3) return;
+    document.getElementById('out').style.display = 'block';
+    document.getElementById('answer').textContent = 'Thinking...';
+    document.getElementById('badge').textContent = '';
+    document.getElementById('meta').textContent = '';
+    try {
+      const res = await fetch('/ask', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ question }) });
+      const d = await res.json();
+      const badge = document.getElementById('badge');
+      badge.textContent = (d.urgency || '').replace(/_/g, ' ');
+      badge.className = 'badge ' + (d.urgency || '');
+      document.getElementById('answer').textContent = d.answer || 'Error: ' + JSON.stringify(d);
+      document.getElementById('meta').textContent = (d.found_in_docs ? 'Based on: ' + (d.sections_used || []).join(', ') : 'Not covered in my notes') + '  |  ' + (d.disclaimer || '') + '  |  mode: ' + (d.mode || '');
+      document.getElementById('json').textContent = JSON.stringify(d, null, 2);
+    } catch (e) { document.getElementById('answer').textContent = 'Something went wrong: ' + e; }
+  }
+</script>
+</body>
+</html>
